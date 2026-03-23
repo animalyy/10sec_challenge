@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>10秒チャレンジ</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=M+PLUS+1p:wght@400;800;900&display=swap');
+:root{
+  --bg:#060610;--surface:#0d0d1e;--border:#181830;
+  --accent:#00d4ff;--red:#ff2d55;--green:#30ff80;--orange:#ff9500;--gold:#ffd60a;
+  --text:#e0e4ff;--muted:#383860;
+  --mono:'Share Tech Mono',monospace;--sans:'M PLUS 1p',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;touch-action:none;}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  display:flex;flex-direction:column;height:100dvh;
+  user-select:none;-webkit-user-select:none;position:relative;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(0,212,255,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.05) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+
+/* ===== HEADER ===== */
+.header{
+position:relative;z-index:10;padding:12px 20px 10px;
+border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.header-title{font-family:var(--mono);font-size:13px;letter-spacing:4px;color:var(--accent);text-shadow:0 0 14px rgba(0,212,255,.6);}
+.header-sub{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted);}
+
+/* ===== MAIN ===== */
+.main{
+position:relative;z-index:10;flex:1;
+display:flex;flex-direction:column;align-items:center;
+justify-content:space-between;padding:14px 20px 16px;overflow:hidden;
+}
+
+/* clock */
+.clock-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.clock-label{font-family:var(--mono);font-size:10px;letter-spacing:5px;color:var(--muted);}
+.clock{
+font-family:var(--mono);font-size:clamp(58px,17vw,80px);
+letter-spacing:2px;color:var(--accent);
+text-shadow:0 0 30px rgba(0,212,255,.5),0 0 60px rgba(0,212,255,.2);
+transition:color .15s,text-shadow .15s;line-height:1;
+}
+.clock.danger{color:var(--red);text-shadow:0 0 30px rgba(255,45,85,.7),0 0 60px rgba(255,45,85,.3);animation:blink .35s ease-in-out infinite alternate;}
+.clock.perfect{color:var(--green);text-shadow:0 0 30px rgba(48,255,128,.8),0 0 80px rgba(48,255,128,.4);}
+@keyframes blink{to{opacity:.5;}}
+
+/* 7秒で目隠し：textContent自体を??.???に差し替えるのでCSSは色だけ */
+.clock-wrap.blinded-wrap .clock{
+color:var(--muted);
+text-shadow:none;
+animation:question-pulse .8s ease-in-out infinite alternate;
+}
+@keyframes question-pulse{
+from{opacity:.25;}
+to{opacity:.65;text-shadow:0 0 24px rgba(255,45,85,.5);}
+}
+
+/* タイムアウト演出 */
+.clock.timeout{
+color:var(--red)!important;
+text-shadow:0 0 40px rgba(255,45,85,1),0 0 80px rgba(255,45,85,.5)!important;
+animation:timeout-flash .15s ease-in-out 5!important;
+}
+@keyframes timeout-flash{
+0%,100%{opacity:1;}
+50%{opacity:.1;}
+}
+
+/* 目隠し中のボタン */
+.tap-btn.blinded-running{
+border-color:var(--muted)!important;
+animation:none!important;
+box-shadow:none!important;
+}
+.tap-btn.blinded-running .btn-main{color:var(--muted)!important;}
+
+/* タイムアウトバナー */
+.timeout-badge{
+font-family:var(--mono);font-size:11px;letter-spacing:4px;
+color:var(--red);border:1px solid var(--red);
+padding:3px 12px;border-radius:20px;
+background:rgba(255,45,85,.1);
+animation:timeout-badge-pulse .6s ease-in-out infinite alternate;
+}
+@keyframes timeout-badge-pulse{to{box-shadow:0 0 12px rgba(255,45,85,.5);}}
+
+/* result block */
+.result-block{
+width:100%;background:var(--surface);
+border:1px solid var(--border);border-radius:10px;
+padding:14px 16px;display:flex;flex-direction:column;
+align-items:center;gap:8px;min-height:100px;justify-content:center;
+position:relative;overflow:hidden;
+}
+.result-block::before{
+content:'';position:absolute;top:0;left:0;right:0;height:1px;
+background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5;
+}
+.diff-main{
+font-family:var(--mono);font-size:clamp(36px,11vw,52px);
+letter-spacing:2px;line-height:1;transition:color .15s,text-shadow .15s;
+}
+.diff-main.early  {color:var(--red);   text-shadow:0 0 20px rgba(255,45,85,.6);}
+.diff-main.late   {color:var(--orange);text-shadow:0 0 20px rgba(255,149,0,.6);}
+.diff-main.great  {color:var(--green); text-shadow:0 0 20px rgba(48,255,128,.7);}
+.diff-main.perfect{color:var(--green); text-shadow:0 0 30px rgba(48,255,128,.9),0 0 60px rgba(48,255,128,.4);animation:perf-pulse 1s ease-in-out infinite alternate;}
+.diff-main.idle   {color:var(--muted);}
+@keyframes perf-pulse{to{text-shadow:0 0 50px rgba(48,255,128,1),0 0 100px rgba(48,255,128,.6);}}
+
+.dir-badge{
+padding:3px 14px;border-radius:20px;border:1px solid;
+font-family:var(--mono);font-size:11px;letter-spacing:3px;
+}
+.dir-badge.early  {color:var(--red);   border-color:var(--red);   background:rgba(255,45,85,.1);}
+.dir-badge.late   {color:var(--orange);border-color:var(--orange);background:rgba(255,149,0,.1);}
+.dir-badge.great,
+.dir-badge.perfect{color:var(--green); border-color:var(--green); background:rgba(48,255,128,.1);}
+.dir-badge.idle   {color:var(--muted); border-color:var(--muted);}
+.diff-measured{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:2px;}
+.diff-measured span{color:var(--text);}
+
+/* tap button */
+.tap-area{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.tap-btn{
+width:min(190px,50vw);height:min(190px,50vw);border-radius:50%;
+border:2px solid var(--accent);background:transparent;cursor:pointer;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+position:relative;overflow:hidden;
+-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+transition:border-color .15s,background .15s,transform .08s;
+box-shadow:0 0 0 0 rgba(0,212,255,0);
+}
+.tap-btn::after{content:'';position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(0,212,255,.2);}
+.tap-btn.idle-glow{animation:idle-ring 2.5s ease-in-out infinite;}
+@keyframes idle-ring{
+0%  {box-shadow:0 0 0 0 rgba(0,212,255,.4);}
+50% {box-shadow:0 0 0 14px rgba(0,212,255,0);}
+100%{box-shadow:0 0 0 0 rgba(0,212,255,0);}
+}
+.tap-btn.running{border-color:var(--red);animation:ring-pulse .8s ease-out infinite;box-shadow:none;}
+.tap-btn.running::after{border-color:rgba(255,45,85,.3);}
+@keyframes ring-pulse{
+0%  {box-shadow:0 0 0 0 rgba(255,45,85,.6);}
+70% {box-shadow:0 0 0 22px rgba(255,45,85,0);}
+100%{box-shadow:0 0 0 0 rgba(255,45,85,0);}
+}
+.tap-btn:active{transform:scale(.91);background:rgba(0,212,255,.07);}
+.tap-btn.running:active{background:rgba(255,45,85,.07);}
+.btn-main{font-family:var(--mono);font-size:15px;letter-spacing:4px;color:var(--accent);}
+.btn-sub {font-family:var(--mono);font-size:9px; letter-spacing:3px;color:var(--muted);}
+.tap-btn.running .btn-main{color:var(--red);}
+.tap-hint{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--muted);}
+
+/* stats */
+.stats-row{
+width:100%;display:grid;grid-template-columns:repeat(3,1fr);
+background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+}
+.stat-item{display:flex;flex-direction:column;align-items:center;padding:8px;gap:3px;border-right:1px solid var(--border);}
+.stat-item:last-child{border-right:none;}
+.stat-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);}
+.stat-val  {font-family:var(--mono);font-size:14px;color:var(--text);letter-spacing:1px;}
+.stat-val.green{color:var(--green);}
+
+/* ===== RANKING OVERLAY ===== */
+#confettiCanvas{
+position:fixed;inset:0;z-index:198;pointer-events:none;
+opacity:0;transition:opacity .4s;
+}
+#confettiCanvas.active{opacity:1;}
+
+.ranking-overlay{
+position:fixed;inset:0;z-index:200;
+display:flex;flex-direction:column;
+opacity:0;pointer-events:none;
+transition:opacity .35s ease;
+background:rgba(6,6,16,.88);
+backdrop-filter:blur(6px) saturate(1.4);
+}
+.ranking-overlay.visible{opacity:1;pointer-events:all;}
+
+/* ランキングヘッダー */
+.ranking-header{
+padding:18px 20px 0;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;
+}
+.ranking-title{
+font-family:var(--mono);font-size:11px;letter-spacing:6px;
+color:var(--accent);text-shadow:0 0 16px rgba(0,212,255,.7);
+}
+
+/* 今回の結果バナー */
+.this-result-banner{
+margin:12px 16px 0;
+border-radius:14px;padding:16px 18px;
+display:flex;align-items:center;gap:14px;
+position:relative;overflow:hidden;flex-shrink:0;
+background:var(--surface);
+border:1px solid rgba(255,255,255,.06);
+transform:translateY(20px);opacity:0;
+transition:transform .45s cubic-bezier(.2,.8,.3,1),opacity .45s ease;
+}
+.ranking-overlay.visible .this-result-banner{transform:translateY(0);opacity:1;transition-delay:.1s;}
+
+/* バナーのグロー下地 */
+.this-result-banner::after{
+content:'';position:absolute;inset:0;border-radius:14px;
+background:radial-gradient(ellipse at 50% 0%,var(--glow-col, rgba(255,255,255,.12)) 0%,transparent 70%);
+pointer-events:none;
+}
+.this-result-banner.early {--glow-col:rgba(255,45,85,.15);border-color:rgba(255,45,85,.3);}
+.this-result-banner.late  {--glow-col:rgba(255,149,0,.15); border-color:rgba(255,149,0,.3);}
+.this-result-banner.great,
+.this-result-banner.perfect{--glow-col:rgba(48,255,128,.15);border-color:rgba(48,255,128,.35);}
+
+.banner-medal{font-size:44px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,215,10,.5));}
+.banner-medal.rn{font-size:28px;font-family:var(--mono);color:var(--text);}
+
+.banner-info{flex:1;display:flex;flex-direction:column;gap:5px;position:relative;z-index:1;}
+.banner-label{font-family:var(--mono);font-size:9px;letter-spacing:4px;color:var(--muted);}
+.banner-diff{font-family:var(--mono);font-size:26px;letter-spacing:1px;line-height:1;}
+.banner-diff.early  {color:var(--red);  text-shadow:0 0 16px rgba(255,45,85,.6);}
+.banner-diff.late   {color:var(--orange);text-shadow:0 0 16px rgba(255,149,0,.6);}
+.banner-diff.great,
+.banner-diff.perfect{color:var(--green);text-shadow:0 0 20px rgba(48,255,128,.8);}
+.banner-elapsed{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:2px;}
+.banner-elapsed span{color:var(--text);}
+
+.banner-badge-col{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1;}
+.banner-grade{
+font-family:var(--mono);font-size:16px;letter-spacing:1px;
+border:1px solid;border-radius:5px;width:40px;text-align:center;padding:4px 0;
+}
+.banner-dir{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:10px;border:1px solid;white-space:nowrap;}
+.banner-dir.early  {color:var(--red);   border-color:var(--red);   background:rgba(255,45,85,.1);}
+.banner-dir.late   {color:var(--orange);border-color:var(--orange);background:rgba(255,149,0,.1);}
+.banner-dir.great,
+.banner-dir.perfect{color:var(--green); border-color:var(--green); background:rgba(48,255,128,.1);}
+
+/* ランキングリスト */
+.ranking-scroll{
+flex:1;overflow-y:auto;padding:10px 16px 8px;
+-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+}
+.ranking-item{
+display:grid;grid-template-columns:40px 1fr auto;
+align-items:center;gap:10px;
+padding:10px 12px;margin-bottom:5px;
+background:var(--surface);border:1px solid var(--border);border-radius:8px;
+opacity:0;transform:translateX(-12px);
+transition:opacity .22s ease,transform .22s ease,border-color .2s,box-shadow .2s;
+}
+.ranking-item.visible{opacity:1;transform:translateX(0);}
+.ranking-item.this-entry{
+border-color:rgba(0,212,255,.4);
+background:rgba(0,212,255,.06);
+box-shadow:0 0 16px rgba(0,212,255,.15),inset 0 0 16px rgba(0,212,255,.04);
+}
+.ranking-item.this-entry.early {border-color:rgba(255,45,85,.4);background:rgba(255,45,85,.07);box-shadow:0 0 16px rgba(255,45,85,.15);}
+.ranking-item.this-entry.late  {border-color:rgba(255,149,0,.4);background:rgba(255,149,0,.07);box-shadow:0 0 16px rgba(255,149,0,.15);}
+.ranking-item.this-entry.great,
+.ranking-item.this-entry.perfect{border-color:rgba(48,255,128,.4);background:rgba(48,255,128,.07);box-shadow:0 0 16px rgba(48,255,128,.18);}
+
+.ri-rank{font-family:var(--mono);font-size:14px;text-align:center;line-height:1;}
+.ri-rank.r1{font-size:20px;filter:drop-shadow(0 0 6px rgba(255,214,10,.6));}
+.ri-rank.r2{font-size:18px;}
+.ri-rank.r3{font-size:18px;}
+.ri-rank.rn{color:var(--muted);font-size:11px;}
+
+.ri-info{display:flex;flex-direction:column;gap:3px;}
+.ri-elapsed{font-family:var(--mono);font-size:14px;color:var(--text);letter-spacing:1px;}
+.ri-diff{font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px;}
+.ri-dv{letter-spacing:1px;}
+.ri-dv.early  {color:var(--red);}
+.ri-dv.late   {color:var(--orange);}
+.ri-dv.great,
+.ri-dv.perfect{color:var(--green);}
+.ri-dir{font-size:9px;letter-spacing:2px;color:var(--muted);}
+.ri-now-tag{
+font-family:var(--mono);font-size:8px;letter-spacing:2px;
+color:var(--accent);border:1px solid rgba(0,212,255,.5);
+padding:1px 5px;border-radius:3px;background:rgba(0,212,255,.08);
+vertical-align:middle;margin-left:6px;
+animation:now-blink 1.2s ease-in-out infinite alternate;
+}
+@keyframes now-blink{to{opacity:.4;}}
+
+.ri-grade{
+font-family:var(--mono);font-size:11px;letter-spacing:1px;
+border:1px solid;border-radius:3px;width:32px;text-align:center;padding:3px 0;
+}
+.g-S{color:var(--gold);border-color:var(--gold);background:rgba(255,214,10,.08);}
+.g-A{color:var(--green);border-color:var(--green);background:rgba(48,255,128,.08);}
+.g-B{color:var(--accent);border-color:var(--accent);background:rgba(0,212,255,.08);}
+.g-C{color:var(--orange);border-color:var(--orange);background:rgba(255,149,0,.08);}
+.g-D{color:var(--muted);border-color:var(--muted);}
+
+/* ===== もう一度ボタン ===== */
+.retry-btn-wrap{
+padding:12px 16px 20px;flex-shrink:0;
+display:flex;justify-content:center;
+transform:translateY(30px);opacity:0;
+transition:transform .5s cubic-bezier(.2,.8,.3,1),opacity .5s ease;
+}
+.ranking-overlay.visible .retry-btn-wrap{transform:translateY(0);opacity:1;transition-delay:.25s;}
+
+.retry-btn{
+position:relative;overflow:hidden;
+width:100%;max-width:320px;
+padding:18px 0;border-radius:50px;
+border:none;cursor:pointer;
+font-family:var(--mono);font-size:16px;letter-spacing:5px;
+color:#000;font-weight:900;
+background:linear-gradient(135deg,var(--green) 0%,var(--accent) 50%,var(--green) 100%);
+background-size:200% 100%;
+animation:btn-shimmer 2s linear infinite;
+box-shadow:
+0 0 0 1px rgba(48,255,128,.3),
+0 0 20px rgba(48,255,128,.4),
+0 0 50px rgba(48,255,128,.2),
+0 4px 30px rgba(0,0,0,.5);
+-webkit-tap-highlight-color:transparent;
+touch-action:manipulation;
+transition:transform .1s,box-shadow .1s;
+}
+@keyframes btn-shimmer{
+0%  {background-position:200% 0;}
+100%{background-position:-200% 0;}
+}
+.retry-btn::before{
+content:'';position:absolute;inset:-2px;border-radius:52px;
+background:linear-gradient(135deg,var(--green),var(--accent),var(--green));
+background-size:200% 100%;
+animation:btn-shimmer 2s linear infinite;
+filter:blur(8px);opacity:.5;z-index:-1;
+}
+.retry-btn:active{transform:scale(.95);box-shadow:0 0 10px rgba(48,255,128,.3),0 2px 10px rgba(0,0,0,.5);}
+.retry-btn-inner{
+display:flex;align-items:center;justify-content:center;gap:10px;
+position:relative;z-index:1;
+}
+.retry-icon{font-size:20px;animation:spin-icon 3s linear infinite;}
+@keyframes spin-icon{
+0%  {transform:rotate(0deg);}
+80% {transform:rotate(0deg);}
+100%{transform:rotate(360deg);}
+}
+
+/* 履歴シート */
+.history-sheet{
+position:fixed;bottom:0;left:0;right:0;z-index:90;
+background:var(--surface);border-top:2px solid var(--border);
+transform:translateY(calc(100% - 44px));
+transition:transform .35s cubic-bezier(.32,.72,0,1);
+max-height:72dvh;display:flex;flex-direction:column;
+border-radius:16px 16px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.6);
+}
+.history-sheet.open{transform:translateY(0);}
+.sheet-pull{padding:10px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sheet-handle-bar{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 6px;}
+.sheet-title-row{
+display:flex;align-items:center;justify-content:space-between;
+padding:8px 20px 12px;flex-shrink:0;border-bottom:1px solid var(--border);
+cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.sheet-title{font-family:var(--mono);font-size:10px;letter-spacing:4px;color:var(--muted);display:flex;align-items:center;gap:12px;}
+.sheet-count{color:var(--accent);}
+.sheet-arrow{transition:transform .3s;}
+.history-sheet.open .sheet-arrow{transform:rotate(180deg);}
+.clear-btn{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--muted);background:none;border:1px solid var(--border);padding:4px 10px;border-radius:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.clear-btn:active{color:var(--red);border-color:var(--red);}
+.history-scroll{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.history-empty{padding:32px;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--muted);}
+.history-item{
+padding:11px 20px;border-bottom:1px solid rgba(24,24,48,.6);
+display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:10px;
+}
+.h-rank{font-family:var(--mono);font-size:12px;color:var(--muted);}
+.h-rank.r1{color:var(--gold);} .h-rank.r2{color:#c0c0c0;} .h-rank.r3{color:#cd7f32;}
+.h-info{display:flex;flex-direction:column;gap:3px;}
+.h-elapsed{font-family:var(--mono);font-size:14px;color:var(--text);letter-spacing:1px;}
+.h-diff-row{font-family:var(--mono);font-size:12px;display:flex;align-items:center;gap:8px;}
+.h-dv{letter-spacing:1px;}
+.h-dv.early  {color:var(--red);}
+.h-dv.late   {color:var(--orange);}
+.h-dv.great,
+.h-dv.perfect{color:var(--green);}
+.h-dir{font-size:9px;letter-spacing:2px;color:var(--muted);}
+.h-grade{font-family:var(--mono);font-size:11px;letter-spacing:1px;border:1px solid;border-radius:3px;width:32px;text-align:center;padding:3px 0;}
+
+/* ripple */
+.ripple{position:absolute;border-radius:50%;width:10px;height:10px;
+background:rgba(0,212,255,.5);transform:scale(0);animation:ripple .55s ease-out forwards;pointer-events:none;}
+.running .ripple{background:rgba(255,45,85,.5);}
+@keyframes ripple{to{transform:scale(22);opacity:0;}}
+</style>
+
+</head>
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<div class="header">
+  <div class="header-title">10SEC CHALLENGE</div>
+  <div class="header-sub">TARGET: 10.000 sec</div>
+</div>
+
+<div class="main">
+  <div class="clock-wrap" id="clockWrap">
+    <div class="clock-label">ELAPSED</div>
+    <div class="clock" id="clock">00.000</div>
+  </div>
+
+  <div class="result-block">
+    <div class="diff-main idle" id="diffMain">- - . - - -</div>
+    <div class="dir-badge idle" id="dirBadge">WAITING</div>
+    <div class="diff-measured" id="diffMeas">計測値: <span>--</span></div>
+  </div>
+
+  <div class="tap-area">
+    <button class="tap-btn idle-glow" id="tapBtn">
+      <div class="btn-main" id="btnMain">TAP</div>
+      <div class="btn-sub"  id="btnSub">to start</div>
+    </button>
+    <div class="tap-hint" id="tapHint">タップしてスタート</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-item">
+      <div class="stat-label">TRIES</div>
+      <div class="stat-val" id="statTries">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">BEST ズレ</div>
+      <div class="stat-val green" id="statBest">--</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">AVG ズレ</div>
+      <div class="stat-val" id="statAvg">--</div>
+    </div>
+  </div>
+</div>
+
+<div class="ranking-overlay" id="rankingOverlay">
+  <div class="ranking-header">
+    <div class="ranking-title">✦ RANKING ✦</div>
+  </div>
+
+  <div class="this-result-banner" id="thisBanner">
+    <div class="banner-medal" id="bannerMedal"></div>
+    <div class="banner-info">
+      <div class="banner-label">THIS RESULT</div>
+      <div class="banner-diff" id="bannerDiff"></div>
+      <div class="banner-elapsed" id="bannerElapsed"></div>
+    </div>
+    <div class="banner-badge-col">
+      <div class="banner-grade" id="bannerGrade"></div>
+      <div class="banner-dir"   id="bannerDir"></div>
+    </div>
+  </div>
+
+  <div class="ranking-scroll" id="rankingScroll"></div>
+
+  <div class="retry-btn-wrap">
+    <button class="retry-btn" id="retryBtn">
+      <div class="retry-btn-inner">
+        <span class="retry-icon">↺</span>
+        <span>もう一度</span>
+      </div>
+    </button>
+  </div>
+</div>
+
+<div class="history-sheet" id="historySheet">
+  <div class="sheet-pull" id="sheetPull">
+    <div style="width:100%"><div class="sheet-handle-bar"></div></div>
+  </div>
+  <div class="sheet-title-row" id="sheetTitleRow">
+    <div class="sheet-title">
+      RECORD <span class="sheet-count" id="sheetCount">0件</span>
+      <span class="sheet-arrow" id="sheetArrow">▲</span>
+    </div>
+    <button class="clear-btn" id="clearBtn">CLEAR</button>
+  </div>
+  <div class="history-scroll" id="historyScroll">
+    <div class="history-empty">--- NO RECORDS ---</div>
+  </div>
+</div>
+
+<script>
+const TARGET=10.0, DEC=3;
+const $=id=>document.getElementById(id);
+
+let running=false,startTime=null,intervalId=null,sheetOpen=false,lastTouch=0;
+let records=[];
+try{records=JSON.parse(localStorage.getItem('10sec_v3')||'[]');}catch(e){}
+
+const clockEl=$('clock'),clockWrap=$('clockWrap'),diffMainEl=$('diffMain'),dirBadgeEl=$('dirBadge');
+const diffMeasEl=$('diffMeas'),tapBtn=$('tapBtn');
+const btnMain=$('btnMain'),btnSub=$('btnSub'),tapHint=$('tapHint');
+const statTries=$('statTries'),statBest=$('statBest'),statAvg=$('statAvg');
+const histSheet=$('historySheet'),histScroll=$('historyScroll');
+const sheetCount=$('sheetCount'),sheetArrow=$('sheetArrow');
+const rankOverlay=$('rankingOverlay'),rankScroll=$('rankingScroll');
+const canvas=$('confettiCanvas');
+const ctx=canvas.getContext('2d');
+
+function fmt(n,id,dec){const s=Math.abs(n).toFixed(dec);const[i,f]=s.split('.');return i.padStart(id,'0')+'.'+f;}
+function grade(a){return a<0.01?'S':a<0.05?'A':a<0.15?'B':a<0.4?'C':'D';}
+function cls(delta,a){if(a<0.005)return'perfect';if(a<0.05)return'great';return delta<0?'early':'late';}
+function rankCls(rk){return rk===1?'r1':rk===2?'r2':rk===3?'r3':'rn';}
+
+let particles=[], confettiRaf=null, confettiRunning=false;
+const COLORS=['#00d4ff','#30ff80','#ffd60a','#ff2d55','#bf5af2','#ff9500','#ffffff'];
+
+function resizeCanvas(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize',resizeCanvas);
+
+function spawnConfetti(count=120){
+  particles=[];
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=3+Math.random()*6;
+    particles.push({
+      x:canvas.width/2+(Math.random()-.5)*80,
+      y:canvas.height*0.35,
+      vx:Math.cos(angle)*speed*(Math.random()>.5?1:-1),
+      vy:-4-Math.random()*8,
+      r:3+Math.random()*4,
+      color:COLORS[Math.floor(Math.random()*COLORS.length)],
+      rot:Math.random()*360,
+      rotV:(Math.random()-.5)*10,
+      shape:Math.random()>.5?'rect':'circle',
+      w:4+Math.random()*6,h:2+Math.random()*4,
+      alpha:1,life:0,maxLife:80+Math.random()*60,
+    });
+  }
+  canvas.classList.add('active');
+  if(!confettiRunning){confettiRunning=true;animateConfetti();}
+}
+
+function animateConfetti(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  let alive=false;
+  particles.forEach(p=>{
+    p.life++;
+    if(p.life>p.maxLife){p.alpha-=0.03;if(p.alpha<0)p.alpha=0;}
+    else{alive=true;}
+    p.x+=p.vx; p.vy+=0.18; p.y+=p.vy;
+    p.vx*=0.99; p.rot+=p.rotV;
+    if(p.alpha<=0)return;
+    ctx.save();
+    ctx.globalAlpha=p.alpha;
+    ctx.translate(p.x,p.y);
+    ctx.rotate(p.rot*Math.PI/180);
+    ctx.fillStyle=p.color;
+    if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();}
+    else{ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);}
+    ctx.restore();
+    if(p.y<canvas.height+20)alive=true;
+  });
+  if(alive){confettiRaf=requestAnimationFrame(animateConfetti);}
+  else{confettiRunning=false;canvas.classList.remove('active');ctx.clearRect(0,0,canvas.width,canvas.height);}
+}
+
+function stopConfetti(){
+  confettiRunning=false;
+  if(confettiRaf)cancelAnimationFrame(confettiRaf);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  canvas.classList.remove('active');
+  particles=[];
+}
+
+function tick(){
+  if(!running)return;
+  const e=(Date.now()-startTime)/1000;
+
+  if(e>=30){
+    forceTimeout();
+    return;
+  }
+
+  if(e<7){
+    clockEl.textContent=fmt(e,2,DEC);
+    clockWrap.classList.remove('blinded-wrap');
+    tapBtn.classList.remove('blinded-running');
+    if(e>=6.5){clockEl.classList.add('danger');}
+    else{clockEl.classList.remove('danger');}
+  } else {
+    clockEl.textContent='??.???';
+    clockEl.classList.remove('danger');
+    clockWrap.classList.add('blinded-wrap');
+    tapBtn.classList.add('blinded-running');
+  }
+}
+
+function startTick(){
+  stopTick();
+  intervalId=setInterval(tick,50);
+}
+function stopTick(){
+  if(intervalId!==null){clearInterval(intervalId);intervalId=null;}
+}
+
+function forceTimeout(){
+  const elapsed=(Date.now()-startTime)/1000;
+  running=false;
+  stopTick();
+
+  clockEl.classList.remove('blinded','danger');
+  clockWrap.classList.remove('blinded-wrap');
+  clockEl.classList.add('timeout');
+  clockEl.textContent='30.000';
+  tapBtn.classList.remove('running','blinded-running');
+  tapBtn.classList.add('idle-glow');
+
+  btnMain.textContent='TAP';
+  btnSub.textContent='to retry';
+  tapHint.textContent='もう一度';
+
+  const delta=elapsed-TARGET;
+  const a=Math.abs(delta);
+  const c=cls(delta,a);
+
+  diffMainEl.textContent='TIME OVER';
+  diffMainEl.className='diff-main early';
+  dirBadgeEl.innerHTML='<span class="timeout-badge">TIMEOUT — 30sec OVER</span>';
+  dirBadgeEl.className='dir-badge';
+  dirBadgeEl.style.border='none';
+  dirBadgeEl.style.background='none';
+  dirBadgeEl.style.padding='0';
+  diffMeasEl.innerHTML=`計測値: <span>≥ 30.000 sec</span>`;
+
+  updateStats();
+  setTimeout(()=>{
+    clockEl.classList.remove('timeout');
+    dirBadgeEl.style='';
+  },1500);
+}
+
+function doTap(cx,cy){
+  doRipple(cx,cy);
+  if(!running){
+    startTime=Date.now();
+    running=true;
+    clockEl.className='clock';
+    clockEl.textContent='00.000';
+    clockWrap.classList.remove('blinded-wrap');
+    dirBadgeEl.style='';
+    setIdle();
+    tapBtn.classList.remove('idle-glow');
+    tapBtn.classList.add('running');
+    btnMain.textContent='STOP';
+    btnSub.textContent='at 10 seconds';
+    tapHint.textContent='10秒ちょうどでタップ！';
+    startTick();
+  } else {
+    const elapsed=(Date.now()-startTime)/1000;
+    running=false;
+    stopTick();
+    clockEl.classList.remove('danger','blinded','timeout');
+    clockWrap.classList.remove('blinded-wrap');
+    tapBtn.classList.remove('blinded-running');
+    clockEl.textContent=fmt(elapsed,2,DEC);
+    const delta=elapsed-TARGET,a=Math.abs(delta),c=cls(delta,a);
+    showResult(elapsed,delta,a,c);
+    if(c==='perfect')clockEl.classList.add('perfect');
+    tapBtn.classList.remove('running');
+    tapBtn.classList.add('idle-glow');
+    btnMain.textContent='TAP';
+    btnSub.textContent='to retry';
+    tapHint.textContent='もう一度';
+
+    const newRecord={elapsed,delta,ts:Date.now()};
+    records.unshift(newRecord);
+    if(records.length>50)records.length=50;
+    save();updateStats();renderHistory();
+
+    setTimeout(()=>showRanking(newRecord,c),300);
+  }
+}
+
+function setIdle(){
+  diffMainEl.textContent='- - . - - -';
+  diffMainEl.className='diff-main idle';
+  dirBadgeEl.textContent='WAITING';
+  dirBadgeEl.className='dir-badge idle';
+  diffMeasEl.innerHTML='計測値: <span>--</span>';
+}
+function showResult(elapsed,delta,a,c){
+  const sign=delta<0?'−':'+';
+  diffMainEl.textContent=c==='perfect'?'✦ PERFECT ✦':sign+fmt(a,1,DEC)+' sec';
+  diffMainEl.className='diff-main '+c;
+  const labels={perfect:'PERFECT',great:delta<0?'ちょい早め':'ちょい遅め',early:'EARLY（早い）',late:'LATE（遅い）'};
+  dirBadgeEl.textContent=labels[c];
+  dirBadgeEl.className='dir-badge '+c;
+  diffMeasEl.innerHTML=`計測値: <span>${fmt(elapsed,2,DEC)} sec</span>`;
+}
+
+function doRipple(cx,cy){
+  const rect=tapBtn.getBoundingClientRect();
+  const el=document.createElement('div');
+  el.className='ripple';
+  el.style.left=(cx-rect.left-5)+'px';
+  el.style.top =(cy-rect.top-5)+'px';
+  tapBtn.appendChild(el);
+  setTimeout(()=>el.remove(),560);
+}
+
+function showRanking(newRecord,resultCls){
+  const sorted=[...records].sort((a,b)=>Math.abs(a.delta)-Math.abs(b.delta));
+  const newRank=sorted.findIndex(r=>r.ts===newRecord.ts&&r.elapsed===newRecord.elapsed)+1;
+  const a=Math.abs(newRecord.delta);
+  const c=cls(newRecord.delta,a);
+  const g=grade(a);
+
+  const banner=$('thisBanner');
+  banner.className='this-result-banner '+c;
+  const medal=$('bannerMedal');
+  if(newRank===1){medal.textContent='🥇';medal.className='banner-medal';}
+  else if(newRank===2){medal.textContent='🥈';medal.className='banner-medal';}
+  else if(newRank===3){medal.textContent='🥉';medal.className='banner-medal';}
+  else{medal.textContent='#'+newRank;medal.className='banner-medal rn';}
+
+  const sign=newRecord.delta<0?'−':'+';
+  $('bannerDiff').textContent=c==='perfect'?'✦ PERFECT ✦':sign+fmt(a,1,DEC)+' sec';
+  $('bannerDiff').className='banner-diff '+c;
+  $('bannerElapsed').innerHTML=`計測値: <span>${fmt(newRecord.elapsed,2,DEC)} sec</span>`;
+  $('bannerGrade').textContent=g;
+  $('bannerGrade').className='banner-grade g-'+g;
+  const dirLabels={perfect:'PERFECT',great:newRecord.delta<0?'早め':'遅め',early:'EARLY',late:'LATE'};
+  $('bannerDir').textContent=dirLabels[c];
+  $('bannerDir').className='banner-dir '+c;
+
+  rankScroll.innerHTML='';
+  sorted.forEach((r,idx)=>{
+    const rk=idx+1;
+    const ra=Math.abs(r.delta),rc=cls(r.delta,ra),rg=grade(ra);
+    const isThis=r.ts===newRecord.ts&&r.elapsed===newRecord.elapsed;
+    const item=document.createElement('div');
+    item.className='ranking-item'+(isThis?' this-entry '+rc:'');
+    let dvStr,dirStr;
+    if(rc==='perfect'){dvStr='PERFECT';dirStr='';}
+    else{const s=r.delta<0?'−':'+';dvStr=s+ra.toFixed(DEC);dirStr=r.delta<0?'EARLY':'LATE';}
+    const medals=['🥇','🥈','🥉'];
+    const rkLabel=rk<=3?medals[rk-1]:'#'+rk;
+    item.innerHTML=`
+      <div class="ri-rank ${rankCls(rk)}">${rkLabel}</div>
+      <div class="ri-info">
+        <div class="ri-elapsed">${fmt(r.elapsed,2,DEC)}${isThis?'<span class="ri-now-tag">NOW</span>':''}</div>
+        <div class="ri-diff">
+          <span class="ri-dv ${rc}">${dvStr}</span>
+          ${dirStr?`<span class="ri-dir">${dirStr}</span>`:''}
+        </div>
+      </div>
+      <div class="ri-grade g-${rg}">${rg}</div>`;
+    rankScroll.appendChild(item);
+  });
+
+  rankOverlay.classList.add('visible');
+
+  const items=rankScroll.querySelectorAll('.ranking-item');
+  items.forEach((el,i)=>setTimeout(()=>el.classList.add('visible'),i*55+120));
+
+  setTimeout(()=>{
+    const nowEl=rankScroll.querySelector('.this-entry');
+    if(nowEl)nowEl.scrollIntoView({behavior:'smooth',block:'center'});
+  },items.length*55+350);
+
+  if(c==='perfect'||c==='great'||newRank<=3){
+    setTimeout(()=>spawnConfetti(c==='perfect'?180:100),200);
+  }
+}
+
+function closeRanking(){
+  rankOverlay.classList.remove('visible');
+  stopConfetti();
+}
+
+function setupBtn(el){
+  el.addEventListener('touchstart',e=>{e.stopPropagation();closeRanking();},{passive:true});
+  el.addEventListener('click',e=>{e.stopPropagation();if(Date.now()-lastTouch<400)return;closeRanking();});
+}
+setupBtn($('retryBtn'));
+
+tapBtn.addEventListener('touchstart',e=>{
+  e.preventDefault();lastTouch=Date.now();
+  if(rankOverlay.classList.contains('visible')){closeRanking();return;}
+  if(sheetOpen){closeSheet();return;}
+  const t=e.touches[0];doTap(t.clientX,t.clientY);
+},{passive:false});
+tapBtn.addEventListener('click',e=>{
+  if(Date.now()-lastTouch<400)return;
+  if(rankOverlay.classList.contains('visible')){closeRanking();return;}
+  if(sheetOpen){closeSheet();return;}
+  doTap(e.clientX,e.clientY);
+});
+
+function toggleSheet(){sheetOpen?closeSheet():openSheet();}
+function openSheet() {sheetOpen=true; histSheet.classList.add('open');   sheetArrow.textContent='▼';}
+function closeSheet(){sheetOpen=false;histSheet.classList.remove('open');sheetArrow.textContent='▲';}
+$('sheetPull').addEventListener('touchstart',e=>{e.stopPropagation();toggleSheet();},{passive:true});
+$('sheetPull').addEventListener('click',e=>{e.stopPropagation();toggleSheet();});
+$('sheetTitleRow').addEventListener('touchstart',e=>{e.stopPropagation();toggleSheet();},{passive:true});
+$('sheetTitleRow').addEventListener('click',e=>{e.stopPropagation();toggleSheet();});
+let dragY0=null;
+histScroll.addEventListener('touchstart',e=>{dragY0=e.touches[0].clientY;},{passive:true});
+histScroll.addEventListener('touchmove',e=>{
+  if(dragY0===null)return;
+  if(e.touches[0].clientY-dragY0>70&&histScroll.scrollTop===0)closeSheet();
+},{passive:true});
+histScroll.addEventListener('touchend',()=>{dragY0=null;},{passive:true});
+$('clearBtn').addEventListener('touchstart',e=>{
+  e.stopPropagation();
+  if(!confirm('記録を全て削除しますか？'))return;
+  records=[];save();updateStats();renderHistory();
+},{passive:true});
+$('clearBtn').addEventListener('click',e=>{
+  e.stopPropagation();
+  if(Date.now()-lastTouch<400)return;
+  if(!confirm('記録を全て削除しますか？'))return;
+  records=[];save();updateStats();renderHistory();
+});
+
+function updateStats(){
+  statTries.textContent=records.length;
+  sheetCount.textContent=records.length+'件';
+  if(!records.length){statBest.textContent='--';statAvg.textContent='--';return;}
+  const al=records.map(r=>Math.abs(r.delta));
+  statBest.textContent=Math.min(...al).toFixed(DEC);
+  statAvg.textContent=(al.reduce((s,v)=>s+v,0)/al.length).toFixed(DEC);
+}
+
+function renderHistory(){
+  if(!records.length){histScroll.innerHTML='<div class="history-empty">--- NO RECORDS ---</div>';return;}
+  const ranked=records.map((r,i)=>({...r,i}))
+    .sort((a,b)=>Math.abs(a.delta)-Math.abs(b.delta))
+    .map((r,rank)=>({...r,rank}))
+    .sort((a,b)=>a.i-b.i);
+  histScroll.innerHTML=ranked.map(r=>{
+    const rk=r.rank+1;
+    const[rc,rs]=rk===1?['r1','🥇']:rk===2?['r2','🥈']:rk===3?['r3','🥉']:['','#'+rk];
+    const a=Math.abs(r.delta),c=cls(r.delta,a),g=grade(a);
+    let dv,ddir;
+    if(c==='perfect'){dv='PERFECT';ddir='';}
+    else{const s=r.delta<0?'−':'+';dv=s+a.toFixed(DEC);ddir=r.delta<0?'EARLY':'LATE';}
+    return`<div class="history-item">
+      <div class="h-rank ${rc}">${rs}</div>
+      <div class="h-info">
+        <div class="h-elapsed">${fmt(r.elapsed,2,DEC)}</div>
+        <div class="h-diff-row"><span class="h-dv ${c}">${dv}</span>${ddir?`<span class="h-dir">${ddir}</span>`:''}</div>
+      </div>
+      <div class="h-grade g-${g}">${g}</div>
+    </div>`;
+  }).join('');
+}
+
+function save(){try{localStorage.setItem('10sec_v3',JSON.stringify(records));}catch(e){}}
+
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && running){
+    stopTick();
+    startTick();
+  }
+});
+window.addEventListener('pageshow',()=>{
+  if(running){
+    stopTick();
+    startTick();
+  }
+});
+updateStats();
+renderHistory();
+</script>
+
+</body>
+</html>
